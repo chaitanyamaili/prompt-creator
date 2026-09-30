@@ -1,0 +1,14 @@
+Goal: Refactor the auth middleware
+
+Context:
+Go service, uses JWT
+
+Constraints: Keep the public API unchanged
+
+Output format: unified diff
+
+Verbosity: no explanation, code only
+
+Do not: do not touch the database layer
+
+Assume I already know: I know Go and JWT already

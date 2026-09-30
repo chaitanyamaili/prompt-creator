@@ -238,3 +238,35 @@ func TestRunGenerateWithPolishFallsBackWhenUnreachable(t *testing.T) {
 		t.Fatalf("expected warning on stderr, got: %s", stderr.String())
 	}
 }
+
+func TestRunGenerateAllFieldsMatchesGoldenFile(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{
+		"generate",
+		"--goal", "Refactor the auth middleware",
+		"--context", "Go service, uses JWT",
+		"--constraints", "Keep the public API unchanged",
+		"--output-format", "unified diff",
+		"--verbosity", "no explanation, code only",
+		"--scope-boundary", "do not touch the database layer",
+		"--assumed-knowledge", "I know Go and JWT already",
+		"--no-clipboard",
+	}, nil, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+
+	want, err := os.ReadFile("testdata/golden_full_prompt.txt")
+	if err != nil {
+		t.Fatalf("reading golden file: %v", err)
+	}
+	got := strings.TrimRight(stdout.String(), "\n")
+	wantTrimmed := strings.TrimRight(string(want), "\n")
+	if got != wantTrimmed {
+		t.Fatalf("output does not match golden file.\ngot:\n%s\nwant:\n%s", got, wantTrimmed)
+	}
+}
