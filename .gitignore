@@ -1,1 +1,4 @@
 .superpowers/
+/prompt-creator
+*.test
+*.out
