@@ -169,3 +169,26 @@ func TestRunWizardSavesWhenConfirmed(t *testing.T) {
 		t.Fatalf("expected exactly 1 history file, got %d", len(entries))
 	}
 }
+
+func TestRunCategoriesListShowsBuiltinGeneric(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"categories", "list"}, nil, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "generic\t") {
+		t.Fatalf("expected generic category listed, got: %s", stdout.String())
+	}
+}
+
+func TestRunCategoriesUnknownSubcommand(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"categories", "bogus"}, nil, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("expected exit code 2, got %d", code)
+	}
+}

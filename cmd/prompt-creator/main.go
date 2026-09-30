@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"prompt-creator/internal/appdir"
 	"prompt-creator/internal/category"
@@ -28,10 +29,43 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "generate":
 		return runGenerate(args[1:], stdout, stderr)
+	case "categories":
+		return runCategories(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n", args[0])
 		return 2
 	}
+}
+
+func runCategories(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] != "list" {
+		fmt.Fprintln(stderr, "usage: prompt-creator categories list")
+		return 2
+	}
+
+	userDir, err := appdir.ConfigDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "resolving config dir: %v\n", err)
+		return 1
+	}
+
+	cats, err := category.Load(filepath.Join(userDir, "categories"))
+	if err != nil {
+		fmt.Fprintf(stderr, "loading categories: %v\n", err)
+		return 1
+	}
+
+	names := make([]string, 0, len(cats))
+	for name := range cats {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		fmt.Fprintf(stdout, "%s\t%s\n", name, cats[name].Description)
+	}
+
+	return 0
 }
 
 func runWizard(stdin io.Reader, stdout, stderr io.Writer) int {
