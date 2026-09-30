@@ -1,0 +1,14 @@
+{
+  "name": "generic",
+  "description": "Generic task prompt",
+  "fields": [
+    { "key": "goal", "label": "Goal", "question": "What do you want the LLM to do?", "required": true },
+    { "key": "context", "label": "Context", "question": "Relevant background?", "required": false },
+    { "key": "constraints", "label": "Constraints", "question": "Format, length, tone, things to avoid?", "required": false },
+    { "key": "output_format", "label": "Output format", "question": "How should the response be structured?", "required": false },
+    { "key": "verbosity", "label": "Verbosity", "question": "How much explanation should the LLM include?", "required": false },
+    { "key": "scope_boundary", "label": "Do not", "question": "Anything explicitly out of scope?", "required": false },
+    { "key": "assumed_knowledge", "label": "Assume I already know", "question": "What should the LLM skip re-explaining?", "required": false }
+  ],
+  "template": "Goal: {{.goal}}\n{{if .context}}\nContext:\n{{.context}}\n{{end}}{{if .constraints}}\nConstraints: {{.constraints}}\n{{end}}{{if .output_format}}\nOutput format: {{.output_format}}\n{{end}}{{if .verbosity}}\nVerbosity: {{.verbosity}}\n{{end}}{{if .scope_boundary}}\nDo not: {{.scope_boundary}}\n{{end}}{{if .assumed_knowledge}}\nAssume I already know: {{.assumed_knowledge}}\n{{end}}"
+}
