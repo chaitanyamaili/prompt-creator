@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"prompt-creator/internal/clipboard"
 	"prompt-creator/internal/history"
 	"prompt-creator/internal/prompt"
+	"prompt-creator/internal/wizard"
 )
 
 func main() {
@@ -20,8 +22,7 @@ func main() {
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "interactive wizard is not implemented yet; use the \"generate\" command")
-		return 2
+		return runWizard(stdin, stdout, stderr)
 	}
 
 	switch args[0] {
@@ -31,6 +32,66 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "unknown command %q\n", args[0])
 		return 2
 	}
+}
+
+func runWizard(stdin io.Reader, stdout, stderr io.Writer) int {
+	userDir, err := appdir.ConfigDir()
+	if err != nil {
+		fmt.Fprintf(stderr, "resolving config dir: %v\n", err)
+		return 1
+	}
+
+	cats, err := category.Load(filepath.Join(userDir, "categories"))
+	if err != nil {
+		fmt.Fprintf(stderr, "loading categories: %v\n", err)
+		return 1
+	}
+
+	cat, ok := cats["generic"]
+	if !ok {
+		fmt.Fprintln(stderr, "built-in \"generic\" category is missing")
+		return 1
+	}
+
+	scanner := bufio.NewScanner(stdin)
+
+	answers, err := wizard.Run(stdout, scanner, cat)
+	if err != nil {
+		fmt.Fprintf(stderr, "%v\n", err)
+		return 1
+	}
+
+	rendered, err := prompt.Render(cat, answers)
+	if err != nil {
+		fmt.Fprintf(stderr, "rendering prompt: %v\n", err)
+		return 1
+	}
+
+	fmt.Fprintln(stdout, rendered)
+
+	if err := clipboard.Copy(rendered); err != nil {
+		fmt.Fprintf(stderr, "warning: %v\n", err)
+	}
+
+	save, err := wizard.Confirm(stdout, scanner, "Save this prompt to history?")
+	if err != nil {
+		fmt.Fprintf(stderr, "%v\n", err)
+		return 1
+	}
+	if save {
+		path, err := history.Save(history.Entry{
+			Category: "generic",
+			Answers:  answers,
+			Prompt:   rendered,
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "warning: could not save history: %v\n", err)
+		} else {
+			fmt.Fprintf(stdout, "saved to %s\n", path)
+		}
+	}
+
+	return 0
 }
 
 func runGenerate(args []string, stdout, stderr io.Writer) int {

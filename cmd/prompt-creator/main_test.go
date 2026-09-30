@@ -112,3 +112,60 @@ func TestRunUnknownCommand(t *testing.T) {
 		t.Fatalf("expected exit code 2, got %d", code)
 	}
 }
+
+func TestRunWizardHappyPath(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	input := strings.NewReader(strings.Join([]string{
+		"Write a poem", // goal
+		"",             // context
+		"",             // constraints
+		"",             // output_format
+		"",             // verbosity
+		"",             // scope_boundary
+		"",             // assumed_knowledge
+		"n",            // save confirmation
+	}, "\n") + "\n")
+	var stdout, stderr bytes.Buffer
+
+	code := run(nil, input, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Goal: Write a poem") {
+		t.Fatalf("expected rendered prompt on stdout, got: %s", stdout.String())
+	}
+
+	historyDir := filepath.Join(tmp, ".config", "prompt-creator", "history")
+	entries, _ := os.ReadDir(historyDir)
+	if len(entries) != 0 {
+		t.Fatalf("expected no history file when save answer is 'n', got %d files", len(entries))
+	}
+}
+
+func TestRunWizardSavesWhenConfirmed(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	input := strings.NewReader(strings.Join([]string{
+		"Write a poem", "", "", "", "", "", "", "y",
+	}, "\n") + "\n")
+	var stdout, stderr bytes.Buffer
+
+	code := run(nil, input, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+
+	historyDir := filepath.Join(tmp, ".config", "prompt-creator", "history")
+	entries, err := os.ReadDir(historyDir)
+	if err != nil {
+		t.Fatalf("reading history dir: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected exactly 1 history file, got %d", len(entries))
+	}
+}
