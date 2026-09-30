@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunGenerateRequiresGoal(t *testing.T) {
@@ -230,6 +231,70 @@ func TestRunGenerateWithPolishFallsBackWhenUnreachable(t *testing.T) {
 	}, nil, &stdout, &stderr)
 	if code != 0 {
 		t.Fatalf("expected exit code 0 even when Ollama is unreachable, got %d", code)
+	}
+	if !strings.Contains(stdout.String(), "Goal: Write a poem") {
+		t.Fatalf("expected raw prompt fallback on stdout, got: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "could not reach local LLM") {
+		t.Fatalf("expected warning on stderr, got: %s", stderr.String())
+	}
+}
+
+func TestRunGenerateRejectsCategoryWithUnsupportedRequiredField(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	userCatDir := filepath.Join(tmp, ".config", "prompt-creator", "categories")
+	if err := os.MkdirAll(userCatDir, 0o755); err != nil {
+		t.Fatalf("creating user category dir: %v", err)
+	}
+	catJSON := `{
+		"name": "narrow",
+		"description": "narrow test category",
+		"fields": [
+			{"key": "topic", "label": "Topic", "question": "Topic?", "required": true}
+		],
+		"template": "Topic: {{.topic}}\n"
+	}`
+	if err := os.WriteFile(filepath.Join(userCatDir, "narrow.json"), []byte(catJSON), 0o644); err != nil {
+		t.Fatalf("writing user category: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"generate", "--goal", "x", "--category", "narrow", "--no-clipboard"}, nil, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("expected exit code 2, got %d (stdout: %s, stderr: %s)", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), `required field "topic"`) {
+		t.Fatalf("expected error naming the unsupported required field, got: %s", stderr.String())
+	}
+}
+
+func TestRunGenerateWithPolishTimesOutOnSlowServer(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		json.NewEncoder(w).Encode(map[string]string{"response": "Polished: Write a poem"})
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	start := time.Now()
+	code := run([]string{
+		"generate", "--goal", "Write a poem", "--no-clipboard",
+		"--polish", "--ollama-host", server.URL, "--ollama-timeout", "20ms",
+	}, nil, &stdout, &stderr)
+	elapsed := time.Since(start)
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if elapsed > 150*time.Millisecond {
+		t.Fatalf("expected the call to be bounded by the timeout, took %s", elapsed)
 	}
 	if !strings.Contains(stdout.String(), "Goal: Write a poem") {
 		t.Fatalf("expected raw prompt fallback on stdout, got: %s", stdout.String())

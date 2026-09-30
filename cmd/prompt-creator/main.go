@@ -9,14 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
-	"prompt-creator/internal/appdir"
-	"prompt-creator/internal/category"
-	"prompt-creator/internal/clipboard"
-	"prompt-creator/internal/history"
-	"prompt-creator/internal/llm"
-	"prompt-creator/internal/prompt"
-	"prompt-creator/internal/wizard"
+	"github.com/chaitanyamaili/prompt-creator/internal/appdir"
+	"github.com/chaitanyamaili/prompt-creator/internal/category"
+	"github.com/chaitanyamaili/prompt-creator/internal/clipboard"
+	"github.com/chaitanyamaili/prompt-creator/internal/history"
+	"github.com/chaitanyamaili/prompt-creator/internal/llm"
+	"github.com/chaitanyamaili/prompt-creator/internal/prompt"
+	"github.com/chaitanyamaili/prompt-creator/internal/wizard"
 )
 
 func main() {
@@ -130,6 +131,20 @@ func runWizard(stdin io.Reader, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// generateSupportedFields are the category field keys that runGenerate can
+// populate from its flags. A category with a required field outside this
+// set can't be completed via generate and is rejected with a clear error
+// rather than silently rendering that field blank.
+var generateSupportedFields = map[string]bool{
+	"goal":              true,
+	"context":           true,
+	"constraints":       true,
+	"output_format":     true,
+	"verbosity":         true,
+	"scope_boundary":    true,
+	"assumed_knowledge": true,
+}
+
 func runGenerate(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("generate", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -147,6 +162,7 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	polish := fs.Bool("polish", false, "run the prompt through a local LLM (Ollama) polish pass")
 	polishModel := fs.String("polish-model", "llama3", "Ollama model to use for polishing")
 	ollamaHost := fs.String("ollama-host", "http://localhost:11434", "Ollama server host")
+	ollamaTimeout := fs.Duration("ollama-timeout", 30*time.Second, "timeout for the Ollama polish request")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -175,6 +191,13 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	for _, field := range cat.Fields {
+		if field.Required && !generateSupportedFields[field.Key] {
+			fmt.Fprintf(stderr, "generate does not support required field %q for category %q; use the interactive wizard instead\n", field.Key, *categoryName)
+			return 2
+		}
+	}
+
 	answers := map[string]string{
 		"goal":              *goal,
 		"context":           *contextAnswer,
@@ -192,8 +215,11 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *polish {
+		ctx, cancel := context.WithTimeout(context.Background(), *ollamaTimeout)
+		defer cancel()
+
 		polisher := llm.OllamaPolisher{Host: *ollamaHost, Model: *polishModel}
-		polished, err := polisher.Polish(context.Background(), rendered)
+		polished, err := polisher.Polish(ctx, rendered)
 		if err != nil {
 			fmt.Fprintf(stderr, "warning: could not reach local LLM at %s: %v\n", *ollamaHost, err)
 		} else {

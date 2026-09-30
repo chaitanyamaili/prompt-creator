@@ -67,3 +67,32 @@ func TestOllamaPolisherReturnsErrorOnMalformedHost(t *testing.T) {
 		t.Fatalf("expected error for malformed host")
 	}
 }
+
+func TestOllamaPolisherTrimsWhitespaceFromResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(ollamaResponse{Response: "\n\n  Polished prompt  \n\n"})
+	}))
+	defer server.Close()
+
+	p := OllamaPolisher{Host: server.URL, Model: "llama3"}
+	got, err := p.Polish(context.Background(), "x")
+	if err != nil {
+		t.Fatalf("Polish returned error: %v", err)
+	}
+	if got != "Polished prompt" {
+		t.Fatalf("got %q, want %q", got, "Polished prompt")
+	}
+}
+
+func TestOllamaPolisherReturnsErrorWhenResponseIsWhitespaceOnly(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(ollamaResponse{Response: "   \n  "})
+	}))
+	defer server.Close()
+
+	p := OllamaPolisher{Host: server.URL, Model: "llama3"}
+	_, err := p.Polish(context.Background(), "x")
+	if err == nil {
+		t.Fatalf("expected error for whitespace-only response")
+	}
+}

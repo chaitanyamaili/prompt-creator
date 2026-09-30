@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // Polisher tightens a raw templated prompt using an LLM.
@@ -72,9 +73,10 @@ func (p OllamaPolisher) Polish(ctx context.Context, rawPrompt string) (string, e
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return "", fmt.Errorf("decoding ollama response: %w", err)
 	}
-	if parsed.Response == "" {
+	trimmed := strings.TrimSpace(parsed.Response)
+	if trimmed == "" {
 		return "", fmt.Errorf("ollama returned an empty response")
 	}
 
-	return parsed.Response, nil
+	return trimmed, nil
 }

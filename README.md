@@ -5,7 +5,7 @@ either through a guided interactive wizard or a single flag-based command.
 
 ## Install
 
-Build from source (Go 1.21+, no third-party dependencies):
+Build from source (Go 1.26+, no third-party dependencies):
 
     go build -o prompt-creator ./cmd/prompt-creator
 
@@ -33,9 +33,12 @@ Save a generated prompt to `~/.config/prompt-creator/history/`:
 
     ./prompt-creator generate --goal "..." --save
 
-Run the prompt through a local Ollama model before printing it:
+Run the prompt through a local Ollama model before printing it. If Ollama is
+unreachable or doesn't respond within `--ollama-timeout` (default `30s`), the
+unpolished prompt is printed instead and a warning goes to stderr:
 
-    ./prompt-creator generate --goal "..." --polish --polish-model llama3
+    ./prompt-creator generate --goal "..." --polish --polish-model llama3 \
+      --ollama-timeout 45s
 
 ## Categories
 
