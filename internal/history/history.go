@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"prompt-creator/internal/appdir"
+	"github.com/chaitanyamaili/prompt-creator/internal/appdir"
 )
 
 // Entry is what gets persisted for a single saved prompt.

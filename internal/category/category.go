@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"prompt-creator/categories"
+	"github.com/chaitanyamaili/prompt-creator/categories"
 )
 
 // Field describes one question the wizard/flag interface asks for a

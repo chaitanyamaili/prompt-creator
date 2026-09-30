@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"prompt-creator/internal/category"
+	"github.com/chaitanyamaili/prompt-creator/internal/category"
 )
 
 // Render executes the category's template against the provided field

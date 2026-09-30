@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"prompt-creator/internal/category"
+	"github.com/chaitanyamaili/prompt-creator/internal/category"
 )
 
 // Run asks the user each field's question for the given category, writing

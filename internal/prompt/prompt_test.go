@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"prompt-creator/internal/category"
+	"github.com/chaitanyamaili/prompt-creator/internal/category"
 )
 
 func testCategory() category.Category {
