@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"prompt-creator/internal/category"
 	"prompt-creator/internal/clipboard"
 	"prompt-creator/internal/history"
+	"prompt-creator/internal/llm"
 	"prompt-creator/internal/prompt"
 	"prompt-creator/internal/wizard"
 )
@@ -142,6 +144,9 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	categoryName := fs.String("category", "generic", "category to use")
 	save := fs.Bool("save", false, "save the generated prompt to history")
 	noClipboard := fs.Bool("no-clipboard", false, "skip copying the prompt to the clipboard")
+	polish := fs.Bool("polish", false, "run the prompt through a local LLM (Ollama) polish pass")
+	polishModel := fs.String("polish-model", "llama3", "Ollama model to use for polishing")
+	ollamaHost := fs.String("ollama-host", "http://localhost:11434", "Ollama server host")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -184,6 +189,16 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "rendering prompt: %v\n", err)
 		return 1
+	}
+
+	if *polish {
+		polisher := llm.OllamaPolisher{Host: *ollamaHost, Model: *polishModel}
+		polished, err := polisher.Polish(context.Background(), rendered)
+		if err != nil {
+			fmt.Fprintf(stderr, "warning: could not reach local LLM at %s: %v\n", *ollamaHost, err)
+		} else {
+			rendered = polished
+		}
 	}
 
 	fmt.Fprintln(stdout, rendered)

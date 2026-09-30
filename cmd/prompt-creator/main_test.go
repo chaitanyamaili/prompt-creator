@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,5 +192,49 @@ func TestRunCategoriesUnknownSubcommand(t *testing.T) {
 	code := run([]string{"categories", "bogus"}, nil, &stdout, &stderr)
 	if code != 2 {
 		t.Fatalf("expected exit code 2, got %d", code)
+	}
+}
+
+func TestRunGenerateWithPolishUsesPolishedOutput(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"response": "Polished: Write a poem"})
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{
+		"generate", "--goal", "Write a poem", "--no-clipboard",
+		"--polish", "--ollama-host", server.URL,
+	}, nil, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Polished: Write a poem") {
+		t.Fatalf("expected polished prompt on stdout, got: %s", stdout.String())
+	}
+}
+
+func TestRunGenerateWithPolishFallsBackWhenUnreachable(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("USERPROFILE", tmp)
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{
+		"generate", "--goal", "Write a poem", "--no-clipboard",
+		"--polish", "--ollama-host", "http://127.0.0.1:1",
+	}, nil, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 even when Ollama is unreachable, got %d", code)
+	}
+	if !strings.Contains(stdout.String(), "Goal: Write a poem") {
+		t.Fatalf("expected raw prompt fallback on stdout, got: %s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "could not reach local LLM") {
+		t.Fatalf("expected warning on stderr, got: %s", stderr.String())
 	}
 }
