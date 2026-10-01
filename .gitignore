@@ -1,4 +1,5 @@
 .superpowers/
 /prompt-creator
+/dist/
 *.test
 *.out
