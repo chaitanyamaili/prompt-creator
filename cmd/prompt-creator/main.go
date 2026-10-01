@@ -20,6 +20,10 @@ import (
 	"github.com/chaitanyamaili/prompt-creator/internal/wizard"
 )
 
+// version is the build version, overridden at link time via
+// -ldflags "-X main.version=...". See the Makefile.
+var version = "dev"
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
@@ -30,6 +34,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	switch args[0] {
+	case "version", "--version", "-v":
+		fmt.Fprintf(stdout, "prompt-creator %s\n", version)
+		return 0
 	case "generate":
 		return runGenerate(args[1:], stdout, stderr)
 	case "categories":
