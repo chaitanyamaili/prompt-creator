@@ -108,6 +108,19 @@ func TestRunGenerateUnknownFlagReturnsUsageError(t *testing.T) {
 	}
 }
 
+func TestRunVersionPrintsVersion(t *testing.T) {
+	for _, arg := range []string{"version", "--version", "-v"} {
+		var stdout, stderr bytes.Buffer
+		code := run([]string{arg}, nil, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("%s: expected exit code 0, got %d (stderr: %s)", arg, code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), version) {
+			t.Fatalf("%s: expected version %q on stdout, got: %s", arg, version, stdout.String())
+		}
+	}
+}
+
 func TestRunUnknownCommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bogus"}, nil, &stdout, &stderr)

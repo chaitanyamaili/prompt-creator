@@ -2,21 +2,23 @@
 
 ## Development
 
-    go build -o prompt-creator ./cmd/prompt-creator
-    go test ./...
+Common tasks are wrapped in a `Makefile` (run `make` to list them):
 
-No third-party dependencies — keep it that way unless there's a strong reason.
+    make build    # build ./prompt-creator for the host
+    make test     # go test ./...
+    make check    # lint + tests — run this before opening a PR
+
+`make` is the only tooling requirement. No third-party dependencies — keep it
+that way unless there's a strong reason.
 
 ## Workflow
 
 1. Write a failing test before writing the implementation (TDD).
 2. Keep commits focused: one logical change per commit.
-3. Run `go test ./...` and `go vet ./...` before opening a PR.
+3. Run `make check` (lint + tests) before opening a PR.
 4. Cross-platform builds should stay green:
 
-       GOOS=darwin GOARCH=amd64 go build -o /dev/null ./cmd/prompt-creator
-       GOOS=linux GOARCH=amd64 go build -o /dev/null ./cmd/prompt-creator
-       GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/prompt-creator
+       make cross-build   # darwin/linux/windows amd64 binaries into dist/
 
 ## Adding a category
 

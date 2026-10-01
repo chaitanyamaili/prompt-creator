@@ -40,6 +40,9 @@ unpolished prompt is printed instead and a warning goes to stderr:
     ./prompt-creator generate --goal "..." --polish --polish-model llama3 \
       --ollama-timeout 45s
 
+See [docs/ollama-models.md](docs/ollama-models.md) for model recommendations by
+machine (Mac mini and MacBook Pro, M3 onward).
+
 ## Categories
 
 Built-in categories live in `categories/*.json` (embedded in the binary).
@@ -48,4 +51,8 @@ with the same `name` as a built-in overrides it.
 
 ## Development
 
-    go test ./...
+Common tasks are wrapped in a `Makefile` (run `make` to list them):
+
+    make build    # build ./prompt-creator
+    make test     # run the tests
+    make check    # lint + tests, the pre-PR gate
